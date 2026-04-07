@@ -5,8 +5,11 @@ import lunch_bot
 
 app = Flask(__name__)
 
-@app.route("/", methods=["POST"])
+@app.route("/", methods=["GET", "POST"])
 def webhook():
+    if request.method == "GET":
+        return "🚀 Singapore Lunch Bot is Live!", 200
+
     update = request.get_json()
     if not update:
         return "No JSON provided", 400
