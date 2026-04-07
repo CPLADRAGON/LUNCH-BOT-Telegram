@@ -54,14 +54,11 @@ def get_heat_index(temp, rh):
 
 def check_weather(manual=False):
     TARGET_AREA = "Kallang"
-    # 1. 2-Hr Forecast
-    url_f = "https://api-open.data.gov.sg/v2/real-time/api/two-hr-forecast"
-    # 2. UV Index
-    url_uv = "https://api-open.data.gov.sg/v2/real-time/api/uv-index"
-    # 3. Air Temp
-    url_temp = "https://api-open.data.gov.sg/v2/real-time/api/air-temperature"
-    # 4. Humidity
-    url_rh = "https://api-open.data.gov.sg/v2/real-time/api/relative-humidity"
+    # V1 Public APIs (No-Auth)
+    url_f = "https://api.data.gov.sg/v1/environment/2-hour-weather-forecast"
+    url_uv = "https://api.data.gov.sg/v1/environment/uv-index"
+    url_temp = "https://api.data.gov.sg/v1/environment/air-temperature"
+    url_rh = "https://api.data.gov.sg/v1/environment/relative-humidity"
 
     msg_lines = [f"🍱 *Lunch Briefing for {TARGET_AREA}*"]
     rain_alert = False
@@ -70,34 +67,37 @@ def check_weather(manual=False):
     forecast = "Unknown"
 
     try:
-        # Fetch Forecast
+        # 1. Fetch Forecast
         rf = requests.get(url_f).json()
-        f_items = rf.get('data', {}).get('items', []) or rf.get('items', [])
-        f_list = f_items[0].get('forecasts', []) if f_items else []
-        target = next((f for f in f_list if f['area'] == TARGET_AREA), None)
-        if target:
-            forecast = target['forecast']
-            cond = forecast.lower()
-            if any(w in cond for w in ["rain", "showers", "thunderstorm", "storm"]):
-                rain_alert = True
-        
+        items = rf.get('items', [])
+        if items:
+            f_list = items[0].get('forecasts', [])
+            target = next((f for f in f_list if f['area'] == TARGET_AREA), None)
+            if target:
+                forecast = target['forecast']
+                if any(w in forecast.lower() for w in ["rain", "showers", "thunderstorm", "storm"]):
+                    rain_alert = True
         msg_lines.append(f"⛅ *Forecast*: {forecast}")
 
-        # Fetch UV
+        # 2. Fetch UV
         ruv = requests.get(url_uv).json()
-        uv_items = ruv.get('data', {}).get('items', []) or ruv.get('items', [])
+        uv_items = ruv.get('items', [])
         if uv_items:
-            uv_val = uv_items[0].get('index', [{}])[0].get('value', 0)
-            uv_desc = "Low" if uv_val <= 2 else "Mod" if uv_val <= 5 else "High" if uv_val <= 7 else "Very High" if uv_val <= 10 else "Extreme"
-            msg_lines.append(f"🧴 *UV Index*: {uv_val} ({uv_desc})")
+            # UV index structure: items[0]['index'][0]['value']
+            uv_data = uv_items[0].get('index', [])
+            if uv_data:
+                uv_val = uv_data[0].get('value', 0)
+                uv_desc = "Low" if uv_val <= 2 else "Mod" if uv_val <= 5 else "High" if uv_val <= 7 else "Very High" if uv_val <= 10 else "Extreme"
+                msg_lines.append(f"🧴 *UV Index*: {uv_val} ({uv_desc})")
 
-        # Fetch Temp & RH
+        # 3. Fetch Temp & RH
         rt = requests.get(url_temp).json()
         rrh = requests.get(url_rh).json()
-        t_items = rt.get('data', {}).get('items', []) or rt.get('items', [])
-        rh_items = rrh.get('data', {}).get('items', []) or rrh.get('items', [])
+        t_items = rt.get('items', [])
+        rh_items = rrh.get('items', [])
         
         if t_items and rh_items:
+            # Use the first station reading as proxy
             temp = t_items[0].get('readings', [{}])[0].get('value', 30)
             rh = rh_items[0].get('readings', [{}])[0].get('value', 70)
             real_feel = round(get_heat_index(temp, rh), 1)
