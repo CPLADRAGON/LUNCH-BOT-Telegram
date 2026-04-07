@@ -48,33 +48,70 @@ def send_lunch_poll():
     }
     requests.post(url, json=payload)
 
+def get_heat_index(temp, rh):
+    """Simple Heat Index formula (approximation)."""
+    return temp + (0.1 * (rh - 50)) if rh > 50 else temp
+
 def check_weather(manual=False):
     TARGET_AREA = "Kallang"
-    url = "https://api-open.data.gov.sg/v2/real-time/api/two-hr-forecast"
-    print(f"Weather: Checking for {TARGET_AREA} (manual={manual})")
+    # 1. 2-Hr Forecast
+    url_f = "https://api-open.data.gov.sg/v2/real-time/api/two-hr-forecast"
+    # 2. UV Index
+    url_uv = "https://api-open.data.gov.sg/v2/real-time/api/uv-index"
+    # 3. Air Temp
+    url_temp = "https://api-open.data.gov.sg/v2/real-time/api/air-temperature"
+    # 4. Humidity
+    url_rh = "https://api-open.data.gov.sg/v2/real-time/api/relative-humidity"
+
+    msg_lines = [f"🍱 *Lunch Briefing for {TARGET_AREA}*"]
+    rain_alert = False
+    uv_val = 0
+    real_feel = 0
+    forecast = "Unknown"
+
     try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            items = data.get('data', {}).get('items', []) or data.get('items', [])
-            forecasts = items[0].get('forecasts', []) if items else []
-            target = next((f for f in forecasts if f['area'] == TARGET_AREA), None)
+        # Fetch Forecast
+        rf = requests.get(url_f).json()
+        f_items = rf.get('data', {}).get('items', []) or rf.get('items', [])
+        f_list = f_items[0].get('forecasts', []) if f_items else []
+        target = next((f for f in f_list if f['area'] == TARGET_AREA), None)
+        if target:
+            forecast = target['forecast']
+            cond = forecast.lower()
+            if any(w in cond for w in ["rain", "showers", "thunderstorm", "storm"]):
+                rain_alert = True
+        
+        msg_lines.append(f"⛅ *Forecast*: {forecast}")
+
+        # Fetch UV
+        ruv = requests.get(url_uv).json()
+        uv_items = ruv.get('data', {}).get('items', []) or ruv.get('items', [])
+        if uv_items:
+            uv_val = uv_items[0].get('index', [{}])[0].get('value', 0)
+            uv_desc = "Low" if uv_val <= 2 else "Mod" if uv_val <= 5 else "High" if uv_val <= 7 else "Very High" if uv_val <= 10 else "Extreme"
+            msg_lines.append(f"🧴 *UV Index*: {uv_val} ({uv_desc})")
+
+        # Fetch Temp & RH
+        rt = requests.get(url_temp).json()
+        rrh = requests.get(url_rh).json()
+        t_items = rt.get('data', {}).get('items', []) or rt.get('items', [])
+        rh_items = rrh.get('data', {}).get('items', []) or rrh.get('items', [])
+        
+        if t_items and rh_items:
+            temp = t_items[0].get('readings', [{}])[0].get('value', 30)
+            rh = rh_items[0].get('readings', [{}])[0].get('value', 70)
+            real_feel = round(get_heat_index(temp, rh), 1)
+            msg_lines.append(f"🌡️ *Feels Like*: {real_feel}°C")
+
+        # Decision: Send message?
+        msg = "\n".join(msg_lines)
+        if manual:
+            send_telegram_message(msg)
+        elif rain_alert or uv_val >= 6 or real_feel >= 33:
+            send_telegram_message(msg)
             
-            if target:
-                forecast = target['forecast']
-                cond = forecast.lower()
-                is_rainy = any(w in cond for w in ["rain", "showers", "thunderstorm", "storm"])
-                
-                if is_rainy:
-                    msg = f"☔ Heads up for 8 Kallang Sector! The forecast says '{forecast}'. Don't forget your umbrellas! ⛈️"
-                    send_telegram_message(msg)
-                elif manual:
-                    msg = f"☀️ Forecast for 8 Kallang Sector: '{forecast}'. Looks good for lunch! 🍱"
-                    send_telegram_message(msg)
-            elif manual:
-                send_telegram_message("⚠️ Could not find forecast for Kallang. Check again later!")
     except Exception as e:
-        print(f"Weather error: {e}")
+        print(f"Briefing error: {e}")
 
 def update_redis_score(username):
     redis = get_redis_client()
@@ -96,9 +133,16 @@ def get_leaderboard_text(is_monthly=False):
     
     title = "🏆 Monthly Lunch Leaderboard" if is_monthly else "📊 Current Lunch Leaderboard"
     lines = [f"{title}:"]
+    
     for i, (name, count) in enumerate(sorted_lb[:10], 1):
         medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else "🔹"
-        lines.append(f"{medal} @{name}: {count} days")
+        
+        # Calculate Title
+        user_title = ""
+        if count >= 5: user_title = " (Lunch King 👑)"
+        elif count >= 3: user_title = " (Kallang Loyal 🎖️)"
+        
+        lines.append(f"{medal} @{name}: {count} days{user_title}")
     
     if is_monthly:
         redis.delete("lunch_leaderboard") # Reset

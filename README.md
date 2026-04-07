@@ -1,42 +1,43 @@
-# 🍱 Singapore Lunch Bot
+# 🍱 Singapore Lunch Bot (Real-Time Edition)
 
-A simple, automated Telegram bot for team lunch coordination.
+A premium, automated Telegram bot for team lunch coordination, now upgraded with real-time interactivity and hyper-local SG weather data.
 
 ## ✨ Features
 
 - **🇸🇬 Singapore Holiday Aware**: Skips weekends and official SG Public Holidays.
-- **⛈️ Targeted Weather Alert**: Checks the forecast for **Kallang (8 Kallang Sector)** at **11:15 AM SGT**.
+- **🌦️ Daily Lunch Briefing**: Checks the forecast for **Kallang (8 Kallang Sector)**, **UV Index**, and **"Feels Like" Temperature** at **11:15 AM SGT**.
 - **🗳️ Interactive Polls**: Sends a native poll at **11:00 AM SGT**.
+- **👑 Social Leaderboard**: Earn titles like **"Kallang Loyal" (3+ days)** or **"Lunch King" (5+ days)** based on your attendance!
+- **⚡ Real-Time Commands**: Now responds instantly to `/weather` and `/leaderboard` via Vercel Webhooks.
 - **🔔 Smart Reminders**: Mentions people who haven't voted by **11:20 AM SGT**.
-- **🏆 Monthly Leaderboard**: Keeps track of lunch attendance and summarizes at month-end.
 
 ## 🛠️ Setup Instructions
 
-### 1. Create your Telegram Bot
-1. Message [@BotFather](https://t.me/botfather) on Telegram.
-2. Send `/newbot` and follow the instructions to get your **Bot Token**.
-3. Add your new bot to your group chat.
+### 1. Telegram & Database Setup
+1. Create a bot with [@BotFather](https://t.me/botfather) to get your **Bot Token**.
+2. Add your bot to your group and get the **Chat ID** (starting with `-100`).
+3. Create a free **Upstash Redis** database to store the leaderboard data.
 
-### 2. Get your Group Chat ID
-1. Add `@myidbot` to your group chat.
-2. Type `/getgroupid` in the group.
-3. Copy the ID (it should start with a minus sign, e.g., `-100123456789`).
+### 2. Deployment (Vercel + GitHub)
+The bot uses a hybrid architecture:
+- **GitHub Actions**: Handles the daily schedule (Poll, Briefing, Reminders).
+- **Vercel**: Handles real-time commands (`/weather`, `/leaderboard`).
 
-### 3. Configure GitHub Secrets
-In your GitHub repository:
-1. Go to **Settings** > **Secrets and variables** > **Actions**.
-2. Click **New repository secret** and add:
-   - `TELEGRAM_BOT_TOKEN`: Your token from Step 1.
-   - `TELEGRAM_CHAT_ID`: Your group ID from Step 2.
-   - `REGULARS`: (Optional) A comma-separated list of usernames to remind at 11:20 am (e.g. `alice, bob, charlie`).
-   
-## 📊 How to "Call" the Leaderboard
-Since this bot runs on a schedule, you can't type `/leaderboard` in the chat. Instead:
-1. Go to your GitHub repository.
-2. Click on the **Actions** tab.
-3. Select **Daily Lunch Poll Bot** on the left.
-4. Click the **Run workflow** button.
-5. The bot will immediately post the latest standings to your Telegram group!
+#### Configure Environment Variables
+Set these in **both** GitHub Secrets and Vercel Environment Variables:
+- `TELEGRAM_BOT_TOKEN`: Your Bot Token.
+- `TELEGRAM_CHAT_ID`: Your Group Chat ID.
+- `UPSTASH_REDIS_REST_URL`: Provided by Upstash.
+- `UPSTASH_REDIS_REST_TOKEN`: Provided by Upstash.
+- `REGULARS`: (Optional) Comma-separated list of usernames (e.g. `alice,bob`).
+
+### 3. Set the Webhook
+Once deployed on Vercel, link your bot to the new URL:
+`https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<YOUR_VERCEL_URL>/`
+
+## 📊 Commands
+- `/weather`: Get a real-time lunch briefing (Forecast, UV, and Heat Index).
+- `/leaderboard`: See who's leading the lunch pack and their earned titles.
 
 ---
-*Created with ❤️ for hungry teams in Kallang.*
+*Created with ❤️ for hungry teams in Kallang. Upgraded with Real-Time Interactivity.*
