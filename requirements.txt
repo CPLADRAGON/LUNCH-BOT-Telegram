@@ -1,3 +1,5 @@
 requests
 holidays
 pytz
+upstash-redis
+flask

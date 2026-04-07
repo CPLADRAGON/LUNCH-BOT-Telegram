@@ -2,12 +2,18 @@ name: Daily Lunch Poll Bot
 
 on:
   schedule:
-    # Run every Monday to Friday at 03:00 UTC (11:00 AM SGT)
+    # 1. Start Poll at 11:00 AM SGT (03:00 UTC)
     - cron: '0 3 * * 1-5'
-  workflow_dispatch: # Allow manual trigger for testing
+    # 2. Weather Alert at 11:15 AM SGT (03:15 UTC)
+    - cron: '15 3 * * 1-5'
+    # 3. Send Reminder at 11:20 AM SGT (03:20 UTC)
+    - cron: '20 3 * * 1-5'
+    # 4. Monthly Reset at 12:00 PM SGT (04:00 UTC) on last day
+    - cron: '0 4 * * 1-5'
+  workflow_dispatch: # Enable manual trigger from GitHub UI
 
 jobs:
-  send-poll:
+  run-bot:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -23,8 +29,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Send Lunch Poll
+      - name: Execute Bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python lunch_bot.py
+          REGULARS: ${{ secrets.REGULARS }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+        run: python lunch_bot.py --mode auto

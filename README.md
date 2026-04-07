@@ -1,13 +1,14 @@
 # 🍱 Singapore Lunch Bot
 
-A simple, automated Telegram bot that asks your group chat "Who's coming for lunch?" every working day at **11:00 AM Singapore Time**.
+A simple, automated Telegram bot for team lunch coordination.
 
 ## ✨ Features
 
-- **🇸🇬 Singapore Holiday Aware**: Automatically skips weekends and all official Singapore Public Holidays.
-- **☁️ 100% Free Hosting**: Runs on GitHub Actions—no server or payment required.
-- **🗳️ Interactive Polls**: Sends a native Telegram poll so you can see who's joining at a glance.
-- **🚀 Set and Forget**: Once configured, it runs automatically every weekday.
+- **🇸🇬 Singapore Holiday Aware**: Skips weekends and official SG Public Holidays.
+- **⛈️ Targeted Weather Alert**: Checks the forecast for **Kallang (8 Kallang Sector)** at **11:15 AM SGT**.
+- **🗳️ Interactive Polls**: Sends a native poll at **11:00 AM SGT**.
+- **🔔 Smart Reminders**: Mentions people who haven't voted by **11:20 AM SGT**.
+- **🏆 Monthly Leaderboard**: Keeps track of lunch attendance and summarizes at month-end.
 
 ## 🛠️ Setup Instructions
 
@@ -27,32 +28,15 @@ In your GitHub repository:
 2. Click **New repository secret** and add:
    - `TELEGRAM_BOT_TOKEN`: Your token from Step 1.
    - `TELEGRAM_CHAT_ID`: Your group ID from Step 2.
-
-## 📂 Project Structure
-
-- `lunch_bot.py`: The main logic script (Python).
-- `.github/workflows/daily_lunch_poll.yml`: The automation schedule (11:00 AM SGT).
-- `requirements.txt`: Necessary Python libraries (`requests`, `holidays`).
-
-## 🧪 Local Testing
-
-If you want to test the script locally:
-
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. Set your environment variables:
-   ```bash
-   export TELEGRAM_BOT_TOKEN='your_token'
-   export TELEGRAM_CHAT_ID='your_id'
-   ```
-
-3. Run the script:
-   ```bash
-   python lunch_bot.py
-   ```
+   - `REGULARS`: (Optional) A comma-separated list of usernames to remind at 11:20 am (e.g. `alice, bob, charlie`).
+   
+## 📊 How to "Call" the Leaderboard
+Since this bot runs on a schedule, you can't type `/leaderboard` in the chat. Instead:
+1. Go to your GitHub repository.
+2. Click on the **Actions** tab.
+3. Select **Daily Lunch Poll Bot** on the left.
+4. Click the **Run workflow** button.
+5. The bot will immediately post the latest standings to your Telegram group!
 
 ---
-*Created with ❤️ for hungry teams in Singapore.*
+*Created with ❤️ for hungry teams in Kallang.*
