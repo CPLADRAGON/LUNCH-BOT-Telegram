@@ -48,18 +48,31 @@ def send_lunch_poll():
     }
     requests.post(url, json=payload)
 
-def check_weather():
+def check_weather(manual=False):
     TARGET_AREA = "Kallang"
     url = "https://api-open.data.gov.sg/v2/real-time/api/two-hr-forecast"
+    print(f"Weather: Checking for {TARGET_AREA} (manual={manual})")
     try:
         response = requests.get(url)
         if response.status_code == 200:
-            forecasts = response.json().get('items', [{}])[0].get('forecasts', [])
+            data = response.json()
+            items = data.get('data', {}).get('items', []) or data.get('items', [])
+            forecasts = items[0].get('forecasts', []) if items else []
             target = next((f for f in forecasts if f['area'] == TARGET_AREA), None)
+            
             if target:
-                cond = target['forecast'].lower()
-                if any(w in cond for w in ["rain", "showers", "thunderstorm", "storm"]):
-                    send_telegram_message(f"☔ Heads up for 8 Kallang Sector! The forecast says '{target['forecast']}'. Don't forget your umbrellas! ⛈️")
+                forecast = target['forecast']
+                cond = forecast.lower()
+                is_rainy = any(w in cond for w in ["rain", "showers", "thunderstorm", "storm"])
+                
+                if is_rainy:
+                    msg = f"☔ Heads up for 8 Kallang Sector! The forecast says '{forecast}'. Don't forget your umbrellas! ⛈️"
+                    send_telegram_message(msg)
+                elif manual:
+                    msg = f"☀️ Forecast for 8 Kallang Sector: '{forecast}'. Looks good for lunch! 🍱"
+                    send_telegram_message(msg)
+            elif manual:
+                send_telegram_message("⚠️ Could not find forecast for Kallang. Check again later!")
     except Exception as e:
         print(f"Weather error: {e}")
 

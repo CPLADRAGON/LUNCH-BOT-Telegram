@@ -21,7 +21,7 @@ def webhook():
         
         if "/weather" in text:
             os.environ['TELEGRAM_CHAT_ID'] = str(chat_id)
-            lunch_bot.check_weather()
+            lunch_bot.check_weather(manual=True)
         
         elif "/leaderboard" in text:
             os.environ['TELEGRAM_CHAT_ID'] = str(chat_id)
