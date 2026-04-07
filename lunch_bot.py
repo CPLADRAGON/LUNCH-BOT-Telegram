@@ -5,7 +5,11 @@ from datetime import datetime, timedelta
 import pytz
 import argparse
 from upstash_redis import Redis
+from concurrent.futures import ThreadPoolExecutor
 import json
+
+# Persistent session for connection pooling
+session = requests.Session()
 
 def get_sg_now():
     sg_tz = pytz.timezone('Asia/Singapore')
@@ -49,28 +53,50 @@ def send_lunch_poll():
     }
     requests.post(url, json=payload)
 
+from concurrent.futures import ThreadPoolExecutor
+
+# Persistent session for connection pooling
+session = requests.Session()
+
 def get_heat_index(temp, rh):
     """Simple Heat Index formula (approximation)."""
     return temp + (0.1 * (rh - 50)) if rh > 50 else temp
 
+def fetch_json(url):
+    try:
+        return session.get(url, timeout=5).json()
+    except Exception as e:
+        print(f"Fetch error for {url}: {e}")
+        return {}
+
 def check_weather(manual=False):
     TARGET_AREA = "Kallang"
     # V1 Public APIs (No-Auth)
-    url_f = "https://api.data.gov.sg/v1/environment/2-hour-weather-forecast"
-    url_uv = "https://api.data.gov.sg/v1/environment/uv-index"
-    url_temp = "https://api.data.gov.sg/v1/environment/air-temperature"
-    url_rh = "https://api.data.gov.sg/v1/environment/relative-humidity"
+    urls = {
+        "forecast": "https://api.data.gov.sg/v1/environment/2-hour-weather-forecast",
+        "uv": "https://api.data.gov.sg/v1/environment/uv-index",
+        "temp": "https://api.data.gov.sg/v1/environment/air-temperature",
+        "rh": "https://api.data.gov.sg/v1/environment/relative-humidity"
+    }
 
     msg_lines = [f"🍱 *Lunch Briefing for {TARGET_AREA}*"]
+    results = {}
+
+    # 🚀 Fetch all APIs simultaneously (Save ~1.5s)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_to_url = {executor.submit(fetch_json, url): key for key, url in urls.items()}
+        for future in future_to_url:
+            key = future_to_url[future]
+            results[key] = future.result()
+
     rain_alert = False
     uv_val = 0
     real_feel = 0
     forecast = "Unknown"
 
     try:
-        # 1. Fetch Forecast
-        rf = requests.get(url_f).json()
-        items = rf.get('items', [])
+        # 1. Parse Forecast
+        items = results.get("forecast", {}).get('items', [])
         if items:
             f_list = items[0].get('forecasts', [])
             target = next((f for f in f_list if f['area'] == TARGET_AREA), None)
@@ -80,22 +106,18 @@ def check_weather(manual=False):
                     rain_alert = True
         msg_lines.append(f"⛅ *Forecast*: {forecast}")
 
-        # 2. Fetch UV
-        ruv = requests.get(url_uv).json()
-        uv_items = ruv.get('items', [])
+        # 2. Parse UV
+        uv_items = results.get("uv", {}).get('items', [])
         if uv_items:
-            # UV index structure: items[0]['index'][0]['value']
             uv_data = uv_items[0].get('index', [])
             if uv_data:
                 uv_val = uv_data[0].get('value', 0)
                 uv_desc = "Low" if uv_val <= 2 else "Mod" if uv_val <= 5 else "High" if uv_val <= 7 else "Very High" if uv_val <= 10 else "Extreme"
                 msg_lines.append(f"🧴 *UV Index*: {uv_val} ({uv_desc})")
 
-        # 3. Fetch Temp & RH
-        rt = requests.get(url_temp).json()
-        rrh = requests.get(url_rh).json()
-        t_items = rt.get('items', [])
-        rh_items = rrh.get('items', [])
+        # 3. Parse Temp & RH
+        t_items = results.get("temp", {}).get('items', [])
+        rh_items = results.get("rh", {}).get('items', [])
         
         if t_items and rh_items:
             # Use the first station reading as proxy
