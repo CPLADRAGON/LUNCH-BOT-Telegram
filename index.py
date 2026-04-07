@@ -39,10 +39,5 @@ def webhook():
 
     return "OK", 200
 
-# Optional: Add a Root GET handler to verify the bot is live
-@app.route("/", methods=["GET"])
-def index():
-    return "🚀 Singapore Lunch Bot is Live!", 200
-
 if __name__ == "__main__":
     app.run(port=5000)
