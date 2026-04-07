@@ -1,0 +1,30 @@
+name: Daily Lunch Poll Bot
+
+on:
+  schedule:
+    # Run every Monday to Friday at 03:00 UTC (11:00 AM SGT)
+    - cron: '0 3 * * 1-5'
+  workflow_dispatch: # Allow manual trigger for testing
+
+jobs:
+  send-poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Send Lunch Poll
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python lunch_bot.py
