@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import pytz
 import argparse
 from upstash_redis import Redis
+import json
 
 def get_sg_now():
     sg_tz = pytz.timezone('Asia/Singapore')
@@ -120,6 +121,18 @@ def update_redis_score(username):
     redis.hincrby("lunch_leaderboard", username.lower(), 1)
     print(f"Redis: Incremented score for {username}")
 
+def get_voted_key():
+    now = get_sg_now()
+    return f"voted_today:{now.strftime('%Y-%m-%d')}"
+
+def record_vote(username):
+    redis = get_redis_client()
+    if not redis: return
+    key = get_voted_key()
+    redis.sadd(key, username.lower())
+    redis.expire(key, 86400) # Self-clean in 24 hours
+    print(f"Redis: Recorded daily vote for {username}")
+
 def get_leaderboard_text(is_monthly=False):
     redis = get_redis_client()
     if not redis: return "Redis connection failed."
@@ -158,17 +171,20 @@ def remind_non_voters():
     
     regulars = [r.strip().lstrip('@') for r in regulars_raw.split(',') if r.strip()]
     
-    # We can't easily check "who voted today" in Redis without a second key
-    # But since we have the webhook now, we could theoretically keep a "voted_today" set.
-    # For now, let's just use the getUpdates fallback.
-    url = f"https://api.telegram.org/bot{token}/getUpdates"
-    response = requests.get(url, params={"allowed_updates": ["poll_answer"]})
-    if response.status_code == 200:
-        voted = {up['poll_answer']['user']['username'].lower() for up in response.json().get('result', []) if 'poll_answer' in up and up['poll_answer'].get('user', {}).get('username')}
-        missing = [r for r in regulars if r.lower() not in voted]
-        if missing:
-            mentions = " ".join([f"@{m}" for m in missing])
-            send_telegram_message(f"📢 Gentle reminder for {mentions}: Don't forget to vote for lunch! 🍱")
+    # 🕵️ Check Redis for who voted today (Webhooks made getUpdates obsolete)
+    redis = get_redis_client()
+    if not redis: return
+    voted_list = redis.smembers(get_voted_key())
+    voted = {v.lower() for v in (voted_list or [])}
+    
+    missing = [r for r in regulars if r.lower() not in voted]
+    
+    if missing:
+        mentions = " ".join([f"@{m}" for m in missing])
+        msg = f"📢 *Gentle reminder for {mentions}:*\nDon't forget to vote for lunch! 🍱"
+        send_telegram_message(msg)
+    else:
+        print("Everyone has voted!")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

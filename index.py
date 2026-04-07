@@ -36,6 +36,7 @@ def webhook():
             username = user.get("username")
             if username:
                 lunch_bot.update_redis_score(username)
+                lunch_bot.record_vote(username)
 
     return "OK", 200
 
