@@ -216,8 +216,8 @@ def get_ai_hype(prompt_type="scheduled", user_query=None):
     
     try:
         client = genai.Client(api_key=api_key)
-        # Using gemini-1.5-flash (Gemini 3.1 Flash Lite) as the only authorized model
-        model_id = 'gemini-3.1-flash-lite' 
+        # Using gemini-3.1-flash-lite-preview (Current public preview)
+        model_id = 'gemini-3.1-flash-lite-preview' 
         
         system_instruction = (
             "You are the Energetic Hype-Bot for a Singapore team in Kallang. "
