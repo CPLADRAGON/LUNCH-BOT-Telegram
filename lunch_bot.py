@@ -69,7 +69,7 @@ def fetch_json(url):
         print(f"Fetch error for {url}: {e}")
         return {}
 
-def check_weather(manual=False):
+def check_weather(manual=False, chat_id=None):
     TARGET_AREA = "Kallang"
     # V1 Public APIs (No-Auth)
     urls = {
@@ -129,9 +129,9 @@ def check_weather(manual=False):
         # Decision: Send message?
         msg = "\n".join(msg_lines)
         if manual:
-            send_telegram_message(msg)
+            send_telegram_message(msg, chat_id=chat_id)
         elif rain_alert or uv_val >= 6 or real_feel >= 33:
-            send_telegram_message(msg)
+            send_telegram_message(msg, chat_id=chat_id)
             
     except Exception as e:
         print(f"Briefing error: {e}")

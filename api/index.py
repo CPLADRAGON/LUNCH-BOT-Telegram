@@ -18,9 +18,8 @@ def webhook():
         chat_id = update["message"]["chat"]["id"]
         
         if "/weather" in text:
-            # We want to send the reply to the chat where the command came from
             os.environ['TELEGRAM_CHAT_ID'] = str(chat_id)
-            lunch_bot.check_weather()
+            lunch_bot.check_weather(manual=True, chat_id=chat_id)
         
         elif "/leaderboard" in text:
             os.environ['TELEGRAM_CHAT_ID'] = str(chat_id)
