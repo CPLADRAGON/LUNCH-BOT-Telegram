@@ -209,6 +209,25 @@ def remind_non_voters():
     else:
         print("Everyone has voted!")
 
+def is_last_working_day_of_month(date_to_check=None):
+    if date_to_check is None:
+        now = get_sg_now()
+        date_to_check = now.date()
+    
+    if not is_working_day(date_to_check):
+        return False
+    
+    # Check if there are any working days left in the same month
+    curr_day = date_to_check
+    next_day = curr_day + timedelta(days=1)
+    
+    while next_day.month == curr_day.month:
+        if is_working_day(next_day):
+            return False
+        next_day += timedelta(days=1)
+    
+    return True
+
 def get_ai_hype(prompt_type="scheduled", user_query=None):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -273,6 +292,9 @@ if __name__ == "__main__":
     elif mode == 'manual':
         send_telegram_message(get_leaderboard_text())
     elif mode == 'monthly':
-        send_telegram_message(get_leaderboard_text(is_monthly=True))
+        if is_last_working_day_of_month():
+            send_telegram_message(get_leaderboard_text(is_monthly=True))
+        else:
+            print("Monthly trigger fired, but it's not the last working day of the month. Skipping reset.")
     elif mode == 'hype':
         send_ai_hype(prompt_type='scheduled')

@@ -8,8 +8,8 @@ on:
     - cron: '15 3 * * 1-5'
     # 3. Send Reminder at 11:20 AM SGT (03:20 UTC)
     - cron: '20 3 * * 1-5'
-    # 4. Monthly Reset (on last day) at 12:00 PM SGT (04:00 UTC)
-    - cron: '0 4 * * 1-5'
+    # 4. Monthly Reset at 12:00 PM SGT (04:00 UTC) - targets end of month
+    - cron: '0 4 28-31 * *'
   workflow_dispatch: # Enable manual trigger from GitHub UI
 
 jobs:
@@ -54,3 +54,12 @@ jobs:
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
         run: python lunch_bot.py --mode remind
+
+      - name: 🏆 Monthly Leaderboard Reset
+        if: github.event.schedule == '0 4 28-31 * *'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+        run: python lunch_bot.py --mode monthly
