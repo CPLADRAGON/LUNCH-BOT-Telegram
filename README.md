@@ -1,8 +1,17 @@
 # 🍱 Singapore Lunch Bot (Real-Time Edition)
 
-A premium, automated Telegram bot for team lunch coordination, now upgraded with real-time interactivity and hyper-local SG weather data.
+![Lunch Bot Mascot](./assets/mascot.png)
+
+> **"No more lunch guessing games. Total coordination, precision weather, zero friction."**
+
+A premium, automated Telegram bot for team lunch coordination, built for the Kallang sector. Now upgraded with real-time interactivity, gamified engagement, and hyper-local SG weather data.
+
+## 📽️ Project Presentation
+We've prepared a professional overview of the bot's features and architecture:
+👉 **[Download LunchBot_Deck.pptx](./LunchBot_Deck.pptx)**
 
 ## ✨ Features
+
 
 - **🇸🇬 Singapore Holiday Aware**: Skips weekends and official SG Public Holidays.
 - **🌦️ Daily Lunch Briefing**: Checks the forecast for **Kallang (8 Kallang Sector)**, **UV Index**, and **"Feels Like" Temperature** at **11:15 AM SGT**.
