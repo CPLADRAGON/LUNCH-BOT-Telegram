@@ -7,6 +7,7 @@ import argparse
 from upstash_redis import Redis
 from concurrent.futures import ThreadPoolExecutor
 import json
+import google.generativeai as genai
 
 # Persistent session for connection pooling
 session = requests.Session()
@@ -208,9 +209,45 @@ def remind_non_voters():
     else:
         print("Everyone has voted!")
 
+def get_ai_hype(prompt_type="scheduled", user_query=None):
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return "GEMINI_API_KEY is missing! I'm hype-less! 😱"
+    
+    try:
+        genai.configure(api_key=api_key)
+        # Using 1.5 flash for stability/availability
+        model = genai.GenerativeModel('gemini-1.5-flash-latest') 
+        
+        system_instruction = (
+            "You are the Energetic Hype-Bot for a Singapore team in Kallang. "
+            "Your goal is to build MASSSIVE hype for lunch. Be extremely energetic, "
+            "use lots of emojis (🍱,🚀,🔥), use caps for emphasis, and mention local "
+            "Singapore food culture where possible (Makan, Laksa, Chicken Rice, Hawker centers). "
+            "Stay professional but fun. Keep responses under 50 words."
+        )
+        
+        if prompt_type == "scheduled":
+            full_prompt = f"{system_instruction} Generate a short morning hype message for the team (it is currently 10:45 AM)."
+        elif prompt_type == "manual":
+            full_prompt = f"{system_instruction} Someone asked for hype! Give them a burst of energy in 20 words or less!"
+        else:
+            full_prompt = f"{system_instruction} The user asked you this: '{user_query}'. Reply in your hype persona!"
+
+        response = model.generate_content(full_prompt)
+        return response.text
+    except Exception as e:
+        print(f"Gemini Error: {e}")
+        return "I'm having a brain freeze! 🧠❄️ But lunch is still going to be EPIC! 🔥🍱"
+
+def send_ai_hype(chat_id=None, prompt_type="scheduled", query=None):
+    chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID")
+    message = get_ai_hype(prompt_type=prompt_type, user_query=query)
+    send_telegram_message(message, chat_id=chat_id)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', choices=['poll', 'remind', 'weather', 'tally', 'monthly', 'manual', 'auto'], default='auto')
+    parser.add_argument('--mode', choices=['poll', 'remind', 'weather', 'tally', 'monthly', 'manual', 'auto', 'hype'], default='auto')
     args = parser.parse_args()
 
     if not is_working_day(): exit(0)
@@ -233,3 +270,5 @@ if __name__ == "__main__":
         send_telegram_message(get_leaderboard_text())
     elif mode == 'monthly':
         send_telegram_message(get_leaderboard_text(is_monthly=True))
+    elif mode == 'hype':
+        send_ai_hype(prompt_type='scheduled')

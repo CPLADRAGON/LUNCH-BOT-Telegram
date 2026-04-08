@@ -2,4 +2,5 @@ requests
 holidays
 pytz
 upstash-redis
+google-generativeai
 flask

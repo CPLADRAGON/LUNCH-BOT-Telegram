@@ -1,0 +1,29 @@
+name: Daily Morning Hype
+on:
+  schedule:
+    - cron: '45 2 * * 1-5' # 10:45 AM SGT (02:45 UTC), Mon-Fri
+  workflow_dispatch: # Allows manual trigger for testing
+
+jobs:
+  hype:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests google-generativeai holidays pytz upstash-redis
+          
+      - name: Send Hype
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python -c "import sys; import os; sys.path.append(os.getcwd()); import lunch_bot; lunch_bot.send_ai_hype(prompt_type='scheduled')"
