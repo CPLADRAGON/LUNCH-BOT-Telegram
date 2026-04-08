@@ -7,7 +7,7 @@ import argparse
 from upstash_redis import Redis
 from concurrent.futures import ThreadPoolExecutor
 import json
-import google.generativeai as genai
+from google import genai
 
 # Persistent session for connection pooling
 session = requests.Session()
@@ -215,9 +215,9 @@ def get_ai_hype(prompt_type="scheduled", user_query=None):
         return "GEMINI_API_KEY is missing! I'm hype-less! 😱"
     
     try:
-        genai.configure(api_key=api_key)
-        # Using 1.5 flash for stability/availability
-        model = genai.GenerativeModel('gemini-1.5-flash-latest') 
+        client = genai.Client(api_key=api_key)
+        # Using gemini-1.5-flash (Gemini 3.1 Flash Lite) as the only authorized model
+        model_id = 'gemini-3.1-flash-lite' 
         
         system_instruction = (
             "You are the Energetic Hype-Bot for a Singapore team in Kallang. "
@@ -234,7 +234,10 @@ def get_ai_hype(prompt_type="scheduled", user_query=None):
         else:
             full_prompt = f"{system_instruction} The user asked you this: '{user_query}'. Reply in your hype persona!"
 
-        response = model.generate_content(full_prompt)
+        response = client.models.generate_content(
+            model=model_id,
+            contents=full_prompt
+        )
         return response.text
     except Exception as e:
         print(f"Gemini Error: {e}")
@@ -255,8 +258,9 @@ if __name__ == "__main__":
     mode = args.mode
     if mode == 'auto':
         now = get_sg_now()
-        if now.hour == 11 and now.minute < 10: mode = 'poll'
-        elif now.hour == 11 and now.minute < 18: mode = 'weather'
+        # Fallback logic if no mode passed, but we prefer explicit modes now
+        if now.hour == 11 and now.minute < 15: mode = 'poll'
+        elif now.hour == 11 and now.minute < 20: mode = 'weather'
         elif now.hour == 11: mode = 'remind'
         else: mode = 'manual'
 

@@ -24,12 +24,13 @@ def test_ai_hype_generation():
 
     # 2. Test mock generation
     with patch.dict(os.environ, {"GEMINI_API_KEY": "fake_key"}):
-        with patch("google.generativeai.GenerativeModel") as mock_model:
-            mock_inst = mock_model.return_value
-            mock_inst.generate_content.return_value = MagicMock(text="MOCK HYPE! 🔥")
+        with patch("google.genai.Client") as mock_client_class:
+            mock_client = mock_client_class.return_value
+            # Mock the nested models.generate_content call
+            mock_client.models.generate_content.return_value = MagicMock(text="MOCK HYPE! 🔥")
             
             result = lunch_bot.get_ai_hype(prompt_type="manual")
-            print(f"Test 2 (Mock Success): {result}")
+            print(f"Test 2 (Mock Success): {repr(result)}")
             assert "MOCK HYPE" in result
 
     print("\nAI Logic Tests Passed!")
