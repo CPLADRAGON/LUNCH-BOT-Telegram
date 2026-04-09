@@ -54,39 +54,29 @@ def webhook():
 
 @app.route("/api/cron", methods=["POST"])
 def cron_trigger():
-    execution_log = []
-    def log(msg):
-        print(msg)
-        execution_log.append(msg)
-
-    log(f"--- START [Mode: {request.args.get('mode')}] ---")
+    mode = request.args.get("mode", "auto")
+    print(f"--- CRON TRIGGER START [Mode: {mode}] ---")
+    
     try:
         # 1. Verification
         auth_header = request.headers.get("Authorization")
         query_secret = request.args.get("secret")
         cron_secret = os.getenv("CRON_SECRET")
         
-        log(f"Auth: Header={bool(auth_header)}, Query={bool(query_secret)}")
-        
         if not cron_secret:
-            return {"error": "CRON_SECRET missing", "log": execution_log}, 500
+            return "Internal Error: CRON_SECRET missing", 500
             
         authorized = (auth_header == f"Bearer {cron_secret}") or (query_secret == cron_secret)
         if not authorized:
-            log("Error: Unauthorized")
-            return {"error": "Unauthorized", "log": execution_log}, 401
+            print("Error: Unauthorized trigger attempt")
+            return "Unauthorized", 401
 
         # 2. Daily Working Day Check
-        try:
-            is_wd = lunch_bot.is_working_day()
-            log(f"Working Day: {is_wd}")
-        except Exception as we:
-            log(f"WD Check Error: {we}")
-            is_wd = True
+        if not lunch_bot.is_working_day():
+            print("Skipping: Not a working day in Singapore.")
+            return "Skipped: Weekend/Holiday", 200
 
-        mode = request.args.get("mode", "auto")
-        log(f"Mode: {mode}")
-
+        # 3. Mode Dispatcher
         if mode == 'hype':
             lunch_bot.send_ai_hype(prompt_type='scheduled')
         elif mode == 'poll':
@@ -96,20 +86,18 @@ def cron_trigger():
         elif mode == 'remind':
             lunch_bot.remind_non_voters()
         elif mode == 'tally':
-            log("Running tally...")
             lunch_bot.send_leaderboard_tally()
         elif mode == 'monthly':
             if lunch_bot.is_last_working_day_of_month():
                 lunch_bot.send_telegram_message(lunch_bot.get_leaderboard_text(is_monthly=True))
         else:
-            return {"error": f"Invalid mode: {mode}", "log": execution_log}, 400
+            return f"Invalid mode: {mode}", 400
             
-        log("COMPLETED SUCCESSFULLY")
-        return {"status": "success", "mode": mode, "log": execution_log}, 200
+        return f"Success: {mode}", 200
 
     except Exception as e:
-        log(f"FATAL ERROR: {e}")
-        return {"status": "error", "message": str(e), "log": execution_log}, 500
+        print(f"CRITICAL ERROR in {mode}: {e}")
+        return f"Error: {str(e)}", 500
 
 # For local testing
 if __name__ == "__main__":

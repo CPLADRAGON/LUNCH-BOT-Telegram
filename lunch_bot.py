@@ -39,8 +39,7 @@ def send_telegram_message(text, chat_id=None):
     chat_id = chat_id or env_chat_id
     
     if not token or not chat_id:
-        print(f"ERROR: Telegram components missing. Token present: {bool(token)}, Chat ID present: {bool(chat_id)}")
-        print(f"Available env keys: {list(os.environ.keys())}")
+        print(f"Error: Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID")
         return
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
