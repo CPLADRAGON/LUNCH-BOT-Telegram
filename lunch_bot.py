@@ -43,7 +43,7 @@ def send_telegram_message(text, chat_id=None):
     payload = {
         "chat_id": chat_id, 
         "text": text,
-        "parse_mode": "Markdown"
+        "parse_mode": "HTML"
     }
     response = requests.post(url, json=payload)
     if response.status_code != 200:
@@ -91,7 +91,7 @@ def check_weather(manual=False, chat_id=None):
         "rh": "https://api.data.gov.sg/v1/environment/relative-humidity"
     }
 
-    msg_lines = [f"🍱 *Lunch Briefing for {TARGET_AREA}*"]
+    msg_lines = [f"🍱 <b>Lunch Briefing for {TARGET_AREA}</b>"]
     results = {}
 
     # 🚀 Fetch all APIs simultaneously (Save ~1.5s)
@@ -116,7 +116,7 @@ def check_weather(manual=False, chat_id=None):
                 forecast = target['forecast']
                 if any(w in forecast.lower() for w in ["rain", "showers", "thunderstorm", "storm"]):
                     rain_alert = True
-        msg_lines.append(f"⛅ *Forecast*: {forecast}")
+        msg_lines.append(f"⛅ <b>Forecast</b>: {forecast}")
 
         # 2. Parse UV
         uv_items = results.get("uv", {}).get('items', [])
@@ -125,7 +125,7 @@ def check_weather(manual=False, chat_id=None):
             if uv_data:
                 uv_val = uv_data[0].get('value', 0)
                 uv_desc = "Low" if uv_val <= 2 else "Mod" if uv_val <= 5 else "High" if uv_val <= 7 else "Very High" if uv_val <= 10 else "Extreme"
-                msg_lines.append(f"🧴 *UV Index*: {uv_val} ({uv_desc})")
+                msg_lines.append(f"🧴 <b>UV Index</b>: {uv_val} ({uv_desc})")
 
         # 3. Parse Temp & RH
         t_items = results.get("temp", {}).get('items', [])
@@ -136,7 +136,7 @@ def check_weather(manual=False, chat_id=None):
             temp = t_items[0].get('readings', [{}])[0].get('value', 30)
             rh = rh_items[0].get('readings', [{}])[0].get('value', 70)
             real_feel = round(get_heat_index(temp, rh), 1)
-            msg_lines.append(f"🌡️ *Feels Like*: {real_feel}°C")
+            msg_lines.append(f"🌡️ <b>Feels Like</b>: {real_feel}°C")
 
         # Decision: Send message?
         msg = "\n".join(msg_lines)
@@ -178,7 +178,7 @@ def get_leaderboard_text(is_monthly=False):
     processed_data = {k: int(v) for k, v in data.items()}
     sorted_lb = sorted(processed_data.items(), key=lambda x: x[1], reverse=True)
     
-    title = "🏆 Monthly Lunch Leaderboard" if is_monthly else "📊 Current Lunch Leaderboard"
+    title = "🏆 <b>Monthly Lunch Leaderboard</b>" if is_monthly else "📊 <b>Current Lunch Leaderboard</b>"
     lines = [f"{title}:"]
     
     for i, (name, count) in enumerate(sorted_lb[:10], 1):
@@ -215,7 +215,7 @@ def remind_non_voters():
     
     if missing:
         mentions = " ".join([f"@{m}" for m in missing])
-        msg = f"📢 *Gentle reminder for {mentions}:*\nDon't forget to vote for lunch! 🍱"
+        msg = f"📢 <b>Gentle reminder for {mentions}:</b>\nDon't forget to vote for lunch! 🍱"
         send_telegram_message(msg)
     else:
         print("Everyone has voted!")
@@ -305,7 +305,7 @@ def send_leaderboard_tally():
     lb_text = get_leaderboard_text()
     
     # 3. Combine and send
-    full_msg = f"🍱 *LUNCH STANDINGS TALLY* 📊\n\n{ai_cheer}\n\n{lb_text}"
+    full_msg = f"🍱 <b>LUNCH STANDINGS TALLY</b> 📊\n\n{ai_cheer}\n\n{lb_text}"
     send_telegram_message(full_msg)
 
 if __name__ == "__main__":
