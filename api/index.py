@@ -51,35 +51,38 @@ def webhook():
 
 @app.route("/api/cron", methods=["POST"])
 def cron_trigger():
-    print(f"--- CRON TRIGGER START [Mode: {request.args.get('mode')}] ---")
+    execution_log = []
+    def log(msg):
+        print(msg)
+        execution_log.append(msg)
+
+    log(f"--- START [Mode: {request.args.get('mode')}] ---")
     try:
         # 1. Verification
         auth_header = request.headers.get("Authorization")
         query_secret = request.args.get("secret")
         cron_secret = os.getenv("CRON_SECRET")
         
-        print(f"Auth Check: Header={bool(auth_header)}, Query={bool(query_secret)}")
+        log(f"Auth: Header={bool(auth_header)}, Query={bool(query_secret)}")
         
         if not cron_secret:
-            print("Error: CRON_SECRET not set in Environment Variables")
-            return "CRON_SECRET not configured on server", 500
+            return {"error": "CRON_SECRET missing", "log": execution_log}, 500
             
         authorized = (auth_header == f"Bearer {cron_secret}") or (query_secret == cron_secret)
         if not authorized:
-            print("Error: Unauthorized trigger attempt")
-            return "Unauthorized", 401
+            log("Error: Unauthorized")
+            return {"error": "Unauthorized", "log": execution_log}, 401
 
-        # 2. Mode Dispatcher
-        mode = request.args.get("mode", "auto")
-        print(f"Executing Mode: {mode}")
-        
-        # 3. Working Day Check (only log it, don't stop for now)
+        # 2. Daily Working Day Check
         try:
             is_wd = lunch_bot.is_working_day()
-            print(f"SGT Working Day Status: {is_wd}")
+            log(f"Working Day: {is_wd}")
         except Exception as we:
-            print(f"Warning: is_working_day() check failed: {we}")
-            is_wd = True # Force true on error for testing
+            log(f"WD Check Error: {we}")
+            is_wd = True
+
+        mode = request.args.get("mode", "auto")
+        log(f"Mode: {mode}")
 
         if mode == 'hype':
             lunch_bot.send_ai_hype(prompt_type='scheduled')
@@ -90,23 +93,20 @@ def cron_trigger():
         elif mode == 'remind':
             lunch_bot.remind_non_voters()
         elif mode == 'tally':
-            print("Dispatching tally task...")
+            log("Running tally...")
             lunch_bot.send_leaderboard_tally()
         elif mode == 'monthly':
             if lunch_bot.is_last_working_day_of_month():
                 lunch_bot.send_telegram_message(lunch_bot.get_leaderboard_text(is_monthly=True))
         else:
-            print(f"Error: Invalid mode '{mode}'")
-            return f"Invalid or missing mode: {mode}", 400
+            return {"error": f"Invalid mode: {mode}", "log": execution_log}, 400
             
-        print(f"COMPLETED: Job {mode}")
-        return f"Job executed successfully: {mode}", 200
+        log("COMPLETED SUCCESSFULLY")
+        return {"status": "success", "mode": mode, "log": execution_log}, 200
 
     except Exception as e:
-        print(f"CRITICAL API ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        return f"Internal Server Error: {str(e)}", 500
+        log(f"FATAL ERROR: {e}")
+        return {"status": "error", "message": str(e), "log": execution_log}, 500
 
 # For local testing
 if __name__ == "__main__":
