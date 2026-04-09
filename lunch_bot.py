@@ -250,6 +250,9 @@ def get_ai_hype(prompt_type="scheduled", user_query=None):
             full_prompt = f"{system_instruction} Generate a short morning hype message for the team (it is currently 10:45 AM)."
         elif prompt_type == "manual":
             full_prompt = f"{system_instruction} Someone asked for hype! Give them a burst of energy in 20 words or less!"
+        elif prompt_type == "tally":
+            top_names = user_query or "our champions"
+            full_prompt = f"{system_instruction} We are broadcasting the lunch leaderboard. Our top performers are: {top_names}. Give them a celebratory call-out and encourage the rest to catch up!"
         else:
             full_prompt = f"{system_instruction} The user asked you this: '{user_query}'. Reply in your hype persona!"
 
@@ -266,6 +269,32 @@ def send_ai_hype(chat_id=None, prompt_type="scheduled", query=None):
     chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID")
     message = get_ai_hype(prompt_type=prompt_type, user_query=query)
     send_telegram_message(message, chat_id=chat_id)
+
+def send_leaderboard_tally():
+    redis = get_redis_client()
+    if not redis: return
+    
+    data = redis.hgetall("lunch_leaderboard")
+    if not data:
+        send_telegram_message("📊 The leaderboard is currently empty. Let's start voting! 🍱")
+        return
+
+    processed_data = {k: int(v) for k, v in data.items()}
+    sorted_lb = sorted(processed_data.items(), key=lambda x: x[1], reverse=True)
+    
+    # Get top 3 (or fewer) for AI cheer
+    top_performers = [f"@{name}" for name, _ in sorted_lb[:3]]
+    cheer_names = ", ".join(top_performers)
+    
+    # 1. Get AI Cheer
+    ai_cheer = get_ai_hype(prompt_type="tally", user_query=cheer_names)
+    
+    # 2. Get standard leaderboard text
+    lb_text = get_leaderboard_text()
+    
+    # 3. Combine and send
+    full_msg = f"🍱 *LUNCH STANDINGS TALLY* 📊\n\n{ai_cheer}\n\n{lb_text}"
+    send_telegram_message(full_msg)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -289,6 +318,8 @@ if __name__ == "__main__":
         check_weather()
     elif mode == 'remind':
         remind_non_voters()
+    elif mode == 'tally':
+        send_leaderboard_tally()
     elif mode == 'manual':
         send_telegram_message(get_leaderboard_text())
     elif mode == 'monthly':
