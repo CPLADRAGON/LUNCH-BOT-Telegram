@@ -16,6 +16,9 @@ def webhook():
     if "message" in update and "text" in update["message"]:
         text = update["message"]["text"].lower()
         chat_id = update["message"]["chat"]["id"]
+        print(f"--- TELEGRAM_MESSAGE Received ---")
+        print(f"Chat ID: {chat_id}")
+        print(f"---------------------------------")
         
         if "/weather" in text:
             lunch_bot.check_weather(manual=True, chat_id=chat_id)
