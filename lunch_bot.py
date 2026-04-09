@@ -36,9 +36,20 @@ def get_redis_client():
 def send_telegram_message(text, chat_id=None):
     token = os.getenv('TELEGRAM_BOT_TOKEN')
     chat_id = chat_id or os.getenv('TELEGRAM_CHAT_ID')
-    if not (token and chat_id): return
+    if not (token and chat_id):
+        print("Telegram credentials or Chat ID missing.")
+        return
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    requests.post(url, json={"chat_id": chat_id, "text": text})
+    payload = {
+        "chat_id": chat_id, 
+        "text": text,
+        "parse_mode": "Markdown"
+    }
+    response = requests.post(url, json=payload)
+    if response.status_code != 200:
+        print(f"Telegram API Error: {response.status_code} - {response.text}")
+    else:
+        print("Telegram message sent successfully.")
 
 def send_lunch_poll():
     token = os.getenv('TELEGRAM_BOT_TOKEN')
