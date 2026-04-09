@@ -52,34 +52,35 @@ def webhook():
 @app.route("/api/cron", methods=["POST"])
 def cron_trigger():
     print(f"--- CRON TRIGGER START [Mode: {request.args.get('mode')}] ---")
-    
-    # 1. Verification
-    auth_header = request.headers.get("Authorization")
-    query_secret = request.args.get("secret")
-    cron_secret = os.getenv("CRON_SECRET")
-    
-    print(f"Auth Check: Header={bool(auth_header)}, Query={bool(query_secret)}")
-    
-    if not cron_secret:
-        print("Error: CRON_SECRET not set in Environment Variables")
-        return "CRON_SECRET not configured on server", 500
-        
-    authorized = (auth_header == f"Bearer {cron_secret}") or (query_secret == cron_secret)
-    if not authorized:
-        print("Error: Unauthorized trigger attempt")
-        return "Unauthorized", 401
-
-    # 2. Daily Working Day Check
-    is_wd = lunch_bot.is_working_day()
-    print(f"Working Day Check: {is_wd}")
-    if not is_wd:
-        return "Skipping: Not a working day in Singapore", 200
-
-    # 3. Mode Dispatcher
-    mode = request.args.get("mode", "auto")
-    print(f"Executing Mode: {mode}")
-    
     try:
+        # 1. Verification
+        auth_header = request.headers.get("Authorization")
+        query_secret = request.args.get("secret")
+        cron_secret = os.getenv("CRON_SECRET")
+        
+        print(f"Auth Check: Header={bool(auth_header)}, Query={bool(query_secret)}")
+        
+        if not cron_secret:
+            print("Error: CRON_SECRET not set in Environment Variables")
+            return "CRON_SECRET not configured on server", 500
+            
+        authorized = (auth_header == f"Bearer {cron_secret}") or (query_secret == cron_secret)
+        if not authorized:
+            print("Error: Unauthorized trigger attempt")
+            return "Unauthorized", 401
+
+        # 2. Mode Dispatcher
+        mode = request.args.get("mode", "auto")
+        print(f"Executing Mode: {mode}")
+        
+        # 3. Working Day Check (only log it, don't stop for now)
+        try:
+            is_wd = lunch_bot.is_working_day()
+            print(f"SGT Working Day Status: {is_wd}")
+        except Exception as we:
+            print(f"Warning: is_working_day() check failed: {we}")
+            is_wd = True # Force true on error for testing
+
         if mode == 'hype':
             lunch_bot.send_ai_hype(prompt_type='scheduled')
         elif mode == 'poll':
@@ -98,13 +99,14 @@ def cron_trigger():
             print(f"Error: Invalid mode '{mode}'")
             return f"Invalid or missing mode: {mode}", 400
             
-        print(f"SUCCESS: Job {mode} completed")
+        print(f"COMPLETED: Job {mode}")
         return f"Job executed successfully: {mode}", 200
+
     except Exception as e:
-        print(f"CRITICAL ERROR in cron job: {e}")
+        print(f"CRITICAL API ERROR: {e}")
         import traceback
         traceback.print_exc()
-        return f"Error executing job: {str(e)}", 500
+        return f"Internal Server Error: {str(e)}", 500
 
 # For local testing
 if __name__ == "__main__":
