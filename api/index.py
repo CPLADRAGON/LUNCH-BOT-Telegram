@@ -51,14 +51,18 @@ def webhook():
 
 @app.route("/api/cron", methods=["POST"])
 def cron_trigger():
-    # 1. Verification: Only allow triggers with the correct secret
+    # 1. Verification: Look for secret in Header OR Query Param
     auth_header = request.headers.get("Authorization")
+    query_secret = request.args.get("secret")
     cron_secret = os.getenv("CRON_SECRET")
     
     if not cron_secret:
         return "CRON_SECRET not configured on server", 500
         
-    if auth_header != f"Bearer {cron_secret}":
+    # Check if either Bearer token or ?secret=... matches
+    authorized = (auth_header == f"Bearer {cron_secret}") or (query_secret == cron_secret)
+    
+    if not authorized:
         return "Unauthorized", 401
 
     # 2. Daily Working Day Check
