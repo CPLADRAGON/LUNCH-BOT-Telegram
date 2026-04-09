@@ -35,9 +35,12 @@ def get_redis_client():
 
 def send_telegram_message(text, chat_id=None):
     token = os.getenv('TELEGRAM_BOT_TOKEN')
-    chat_id = chat_id or os.getenv('TELEGRAM_CHAT_ID')
-    if not (token and chat_id):
-        print("Telegram credentials or Chat ID missing.")
+    env_chat_id = os.getenv('TELEGRAM_CHAT_ID')
+    chat_id = chat_id or env_chat_id
+    
+    if not token or not chat_id:
+        print(f"ERROR: Telegram components missing. Token present: {bool(token)}, Chat ID present: {bool(chat_id)}")
+        print(f"Available env keys: {list(os.environ.keys())}")
         return
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
