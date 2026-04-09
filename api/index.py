@@ -49,6 +49,47 @@ def webhook():
 
     return "OK", 200
 
+@app.route("/api/cron", methods=["POST"])
+def cron_trigger():
+    # 1. Verification: Only allow triggers with the correct secret
+    auth_header = request.headers.get("Authorization")
+    cron_secret = os.getenv("CRON_SECRET")
+    
+    if not cron_secret:
+        return "CRON_SECRET not configured on server", 500
+        
+    if auth_header != f"Bearer {cron_secret}":
+        return "Unauthorized", 401
+
+    # 2. Daily Working Day Check
+    if not lunch_bot.is_working_day():
+        return "Skipping: Not a working day in Singapore", 200
+
+    # 3. Mode Dispatcher
+    mode = request.args.get("mode", "auto")
+    
+    try:
+        if mode == 'hype':
+            lunch_bot.send_ai_hype(prompt_type='scheduled')
+        elif mode == 'poll':
+            lunch_bot.send_lunch_poll()
+        elif mode == 'weather':
+            lunch_bot.check_weather()
+        elif mode == 'remind':
+            lunch_bot.remind_non_voters()
+        elif mode == 'tally':
+            lunch_bot.send_leaderboard_tally()
+        elif mode == 'monthly':
+            if lunch_bot.is_last_working_day_of_month():
+                lunch_bot.send_telegram_message(lunch_bot.get_leaderboard_text(is_monthly=True))
+        else:
+            return f"Invalid or missing mode: {mode}", 400
+            
+        return f"Job executed successfully: {mode}", 200
+    except Exception as e:
+        print(f"Cron Job Error: {e}")
+        return f"Error executing job: {str(e)}", 500
+
 # For local testing
 if __name__ == "__main__":
     app.run(port=5000)
