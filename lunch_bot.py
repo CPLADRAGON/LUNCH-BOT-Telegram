@@ -199,25 +199,37 @@ def get_leaderboard_text(is_monthly=False):
     
     return "\n".join(lines)
 
-def remind_non_voters():
-    token = os.getenv('TELEGRAM_BOT_TOKEN')
-    chat_id = os.getenv('TELEGRAM_CHAT_ID')
+def get_non_voters():
+    """Returns a list of usernames who haven't voted yet today."""
     regulars_raw = os.getenv('REGULARS', "")
-    if not (token and chat_id) or not regulars_raw: return
+    if not regulars_raw: return []
     
     regulars = [r.strip().lstrip('@') for r in regulars_raw.split(',') if r.strip()]
     
-    # 🕵️ Check Redis for who voted today (Webhooks made getUpdates obsolete)
     redis = get_redis_client()
-    if not redis: return
+    if not redis: return []
+    
     voted_list = redis.smembers(get_voted_key())
     voted = {v.lower() for v in (voted_list or [])}
     
-    missing = [r for r in regulars if r.lower() not in voted]
+    return [r for r in regulars if r.lower() not in voted]
+
+def get_non_voters_text():
+    """Returns a formatted string for Telegram about who hasn't voted."""
+    missing = get_non_voters()
     
     if missing:
         mentions = " ".join([f"@{m}" for m in missing])
-        msg = f"📢 <b>Gentle reminder for {mentions}:</b>\nDon't forget to vote for lunch! 🍱"
+        return f"📢 <b>The following people haven't voted yet:</b>\n{mentions}\n\nDon't forget to vote for lunch! 🍱"
+    else:
+        return "✅ <b>Everyone has voted!</b> Lunch is ready! 🍱"
+
+def remind_non_voters():
+    msg = get_non_voters_text()
+    # Only send reminder if there are people missing (checking the start of the message or common sense)
+    # Actually, the original logic only sent if 'missing' was truthy.
+    missing = get_non_voters()
+    if missing:
         send_telegram_message(msg)
     else:
         print("Everyone has voted!")

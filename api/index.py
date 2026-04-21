@@ -27,6 +27,10 @@ def webhook():
             lb_text = lunch_bot.get_leaderboard_text()
             lunch_bot.send_telegram_message(lb_text, chat_id=chat_id)
 
+        elif "/missing" in text:
+            missing_text = lunch_bot.get_non_voters_text()
+            lunch_bot.send_telegram_message(missing_text, chat_id=chat_id)
+
         elif "/hype" in text:
             lunch_bot.send_ai_hype(chat_id=chat_id, prompt_type="manual")
 
@@ -49,6 +53,7 @@ def webhook():
             username = user.get("username")
             if username:
                 lunch_bot.update_redis_score(username)
+                lunch_bot.record_vote(username)
 
     return "OK", 200
 
