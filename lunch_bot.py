@@ -142,10 +142,7 @@ def check_weather(manual=False, chat_id=None):
 
         # Decision: Send message?
         msg = "\n".join(msg_lines)
-        if manual:
-            send_telegram_message(msg, chat_id=chat_id)
-        elif rain_alert or uv_val >= 6 or real_feel >= 33:
-            send_telegram_message(msg, chat_id=chat_id)
+        send_telegram_message(msg, chat_id=chat_id)
             
     except Exception as e:
         print(f"Briefing error: {e}")
