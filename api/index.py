@@ -47,13 +47,18 @@ def webhook():
     # 2. Handle Poll Answers (Instant Tally)
     if "poll_answer" in update:
         answer = update["poll_answer"]
-        # Only tally if they picked the first option ("I'm in!")
-        if answer.get("option_ids") == [0]:
-            user = answer.get("user", {})
-            username = user.get("username")
-            if username:
-                lunch_bot.update_redis_score(username)
+        user = answer.get("user", {})
+        username = user.get("username")
+        
+        if username:
+            option_ids = answer.get("option_ids", [])
+            if option_ids:
+                # 1. Record that they voted today (to remove from "missing" list)
                 lunch_bot.record_vote(username)
+                
+                # 2. Only tally score if they picked the first option ("I'm in!")
+                if option_ids == [0]:
+                    lunch_bot.update_redis_score(username)
 
     return "OK", 200
 
