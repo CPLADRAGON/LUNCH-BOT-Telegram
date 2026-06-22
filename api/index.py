@@ -12,37 +12,108 @@ app = Flask(__name__)
 def webhook():
     update = request.get_json()
     
-    # 1. Handle Commands
-    if "message" in update and "text" in update["message"]:
-        text = update["message"]["text"].lower()
-        chat_id = update["message"]["chat"]["id"]
-        print(f"--- TELEGRAM_MESSAGE Received ---")
-        print(f"Chat ID: {chat_id}")
-        print(f"---------------------------------")
+    # 1. Handle Messages (Commands, joins, leaves)
+    if "message" in update:
+        message = update["message"]
+        chat_id = message["chat"]["id"]
         
-        if "/weather" in text:
-            lunch_bot.check_weather(manual=True, chat_id=chat_id)
+        # A. Handle Automated Chat Event Listeners (Join/Leave)
+        if "new_chat_members" in message:
+            for member in message["new_chat_members"]:
+                # Filter out bots
+                if member.get("is_bot"):
+                    continue
+                username = member.get("username")
+                if username:
+                    lunch_bot.add_regular(username)
+                    # Celebrate with Gemini Hype!
+                    hype_msg = lunch_bot.get_ai_hype(prompt_type="onboard", user_query=f"@{username}")
+                    lunch_bot.send_telegram_message(hype_msg, chat_id=chat_id)
+                    
+        elif "left_chat_member" in message:
+            member = message["left_chat_member"]
+            if not member.get("is_bot"):
+                username = member.get("username")
+                if username:
+                    lunch_bot.remove_regular(username)
+                    # Say goodbye with Gemini Hype!
+                    hype_msg = lunch_bot.get_ai_hype(prompt_type="offboard", user_query=f"@{username}")
+                    lunch_bot.send_telegram_message(hype_msg, chat_id=chat_id)
         
-        elif "/leaderboard" in text:
-            lb_text = lunch_bot.get_leaderboard_text()
-            lunch_bot.send_telegram_message(lb_text, chat_id=chat_id)
-
-        elif "/missing" in text:
-            missing_text = lunch_bot.get_non_voters_text()
-            lunch_bot.send_telegram_message(missing_text, chat_id=chat_id)
-
-        elif "/hype" in text:
-            lunch_bot.send_ai_hype(chat_id=chat_id, prompt_type="manual")
-
-        else:
-            # Handle Mentions and DMs
-            is_private = update["message"]["chat"]["type"] == "private"
-            bot_username = os.getenv("BOT_USERNAME", "@LunchBot").lower()
+        # B. Handle Text-based Commands
+        elif "text" in message:
+            text = message["text"].lower()
+            print(f"--- TELEGRAM_MESSAGE Received ---")
+            print(f"Chat ID: {chat_id}")
+            print(f"---------------------------------")
             
-            if is_private or bot_username in text:
-                # Remove mention from query for cleaner AI response
-                query = text.replace(bot_username, "").strip()
-                lunch_bot.send_ai_hype(chat_id=chat_id, prompt_type="chat", query=query)
+            # Existing commands
+            if "/weather" in text:
+                lunch_bot.check_weather(manual=True, chat_id=chat_id)
+            
+            elif "/leaderboard" in text:
+                lb_text = lunch_bot.get_leaderboard_text()
+                lunch_bot.send_telegram_message(lb_text, chat_id=chat_id)
+    
+            elif "/missing" in text:
+                missing_text = lunch_bot.get_non_voters_text()
+                lunch_bot.send_telegram_message(missing_text, chat_id=chat_id)
+    
+            elif "/hype" in text:
+                lunch_bot.send_ai_hype(chat_id=chat_id, prompt_type="manual")
+                
+            # Dynamic Onboarding / Offboarding commands
+            elif "/onboard" in text or "/join" in text:
+                # Determine target user
+                target_user = None
+                words = message["text"].split()
+                if len(words) > 1:
+                    arg = words[1].strip()
+                    if arg:
+                        target_user = arg.lstrip("@")
+                
+                # Default to sender if no argument provided
+                if not target_user:
+                    user = message.get("from", {})
+                    target_user = user.get("username")
+                
+                if target_user:
+                    lunch_bot.add_regular(target_user)
+                    hype_msg = lunch_bot.get_ai_hype(prompt_type="onboard", user_query=f"@{target_user}")
+                    lunch_bot.send_telegram_message(hype_msg, chat_id=chat_id)
+                else:
+                    lunch_bot.send_telegram_message("❌ Error: Could not detect username. Please make sure you have a Telegram username set!", chat_id=chat_id)
+            
+            elif "/offboard" in text or "/leave" in text:
+                # Determine target user
+                target_user = None
+                words = message["text"].split()
+                if len(words) > 1:
+                    arg = words[1].strip()
+                    if arg:
+                        target_user = arg.lstrip("@")
+                        
+                # Default to sender if no argument provided
+                if not target_user:
+                    user = message.get("from", {})
+                    target_user = user.get("username")
+                    
+                if target_user:
+                    lunch_bot.remove_regular(target_user)
+                    hype_msg = lunch_bot.get_ai_hype(prompt_type="offboard", user_query=f"@{target_user}")
+                    lunch_bot.send_telegram_message(hype_msg, chat_id=chat_id)
+                else:
+                    lunch_bot.send_telegram_message("❌ Error: Could not detect username. Please make sure you have a Telegram username set!", chat_id=chat_id)
+    
+            else:
+                # Handle Mentions and DMs
+                is_private = message["chat"]["type"] == "private"
+                bot_username = os.getenv("BOT_USERNAME", "@LunchBot").lower()
+                
+                if is_private or bot_username in text:
+                    # Remove mention from query for cleaner AI response
+                    query = text.replace(bot_username, "").strip()
+                    lunch_bot.send_ai_hype(chat_id=chat_id, prompt_type="chat", query=query)
 
     # 2. Handle Poll Answers (Instant Tally)
     if "poll_answer" in update:

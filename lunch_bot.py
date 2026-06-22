@@ -196,12 +196,59 @@ def get_leaderboard_text(is_monthly=False):
     
     return "\n".join(lines)
 
+def get_regulars():
+    """Retrieves list of regular usernames from Redis (with automatic fallback/migration from env)."""
+    redis = get_redis_client()
+    if not redis:
+        regulars_raw = os.getenv('REGULARS', "")
+        return [r.strip().lstrip('@').lower() for r in regulars_raw.split(',') if r.strip()]
+    
+    # Check if "regulars" key exists
+    if not redis.exists("regulars"):
+        # Migrate from env var
+        regulars_raw = os.getenv('REGULARS', "")
+        regulars = [r.strip().lstrip('@').lower() for r in regulars_raw.split(',') if r.strip()]
+        if regulars:
+            # Store in Redis
+            redis.sadd("regulars", *regulars)
+        return regulars
+    
+    # Return members from Redis
+    members = redis.smembers("regulars")
+    return [m.lower() for m in (members or [])]
+
+def add_regular(username):
+    """Adds a lowercased username to the regulars set in Redis."""
+    username = username.strip().lstrip('@').lower()
+    if not username: return False
+    redis = get_redis_client()
+    if not redis: return False
+    
+    # Trigger migration if regulars set doesn't exist yet
+    if not redis.exists("regulars"):
+        get_regulars()
+        
+    redis.sadd("regulars", username)
+    return True
+
+def remove_regular(username):
+    """Removes a lowercased username from the regulars set in Redis."""
+    username = username.strip().lstrip('@').lower()
+    if not username: return False
+    redis = get_redis_client()
+    if not redis: return False
+    
+    # Trigger migration if regulars set doesn't exist yet
+    if not redis.exists("regulars"):
+        get_regulars()
+        
+    redis.srem("regulars", username)
+    return True
+
 def get_non_voters():
     """Returns a list of usernames who haven't voted yet today."""
-    regulars_raw = os.getenv('REGULARS', "")
-    if not regulars_raw: return []
-    
-    regulars = [r.strip().lstrip('@') for r in regulars_raw.split(',') if r.strip()]
+    regulars = get_regulars()
+    if not regulars: return []
     
     redis = get_redis_client()
     if not redis: return []
@@ -276,6 +323,12 @@ def get_ai_hype(prompt_type="scheduled", user_query=None):
         elif prompt_type == "tally":
             top_names = user_query or "our champions"
             full_prompt = f"{system_instruction} We are broadcasting the lunch leaderboard. Our top performers are: {top_names}. Give them a celebratory call-out and encourage the rest to catch up!"
+        elif prompt_type == "onboard":
+            new_member = user_query or "a new legend"
+            full_prompt = f"{system_instruction} Celebrate and welcome {new_member} who just joined our Kallang Lunch Crew! Get them excited to eat lunch with us! Keep it under 40 words."
+        elif prompt_type == "offboard":
+            leaving_member = user_query or "our friend"
+            full_prompt = f"{system_instruction} Say a playful, high-energy goodbye to {leaving_member} who has left our lunch coordination list for now. Wish them a good meal anyway! Keep it under 40 words."
         else:
             full_prompt = f"{system_instruction} The user asked you this: '{user_query}'. Reply in your hype persona!"
 
