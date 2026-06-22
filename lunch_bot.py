@@ -303,8 +303,9 @@ def get_ai_hype(prompt_type="scheduled", user_query=None):
         return "GEMINI_API_KEY is missing! I'm hype-less! 😱"
     
     try:
+        from google.genai import types
         client = genai.Client(api_key=api_key)
-        # Using gemini-3.1-flash-lite-preview (Current public preview)
+        # Using gemini-3.1-flash-lite (Current public model)
         model_id = 'gemini-3.1-flash-lite' 
         
         system_instruction = (
@@ -313,28 +314,31 @@ def get_ai_hype(prompt_type="scheduled", user_query=None):
             "enthusiastic, use lots of emojis (🍱,🚀,🔥), keep the tone friendly and "
             "conversational (avoid using all-caps), and mention local "
             "Singapore food culture where possible (Makan, Laksa, Chicken Rice, Hawker centers). "
-            "Stay professional but fun. Keep responses under 50 words."
+            "Stay professional but fun."
         )
         
         if prompt_type == "scheduled":
-            full_prompt = f"{system_instruction} Generate a short morning hype message for the team (it is currently 10:45 AM)."
+            full_prompt = "Generate a short morning hype message for the team (it is currently 10:45 AM). Keep it under 40 words."
         elif prompt_type == "manual":
-            full_prompt = f"{system_instruction} Someone asked for hype! Give them a burst of energy in 20 words or less!"
+            full_prompt = "Someone asked for hype! Give them a burst of energy in 20 words or less!"
         elif prompt_type == "tally":
             top_names = user_query or "our champions"
-            full_prompt = f"{system_instruction} We are broadcasting the lunch leaderboard. Our top performers are: {top_names}. Give them a celebratory call-out and encourage the rest to catch up!"
+            full_prompt = f"We are broadcasting the lunch leaderboard. Our top performers are: {top_names}. Give them a celebratory call-out and encourage the rest to catch up! Keep it under 40 words."
         elif prompt_type == "onboard":
             new_member = user_query or "a new legend"
-            full_prompt = f"{system_instruction} Celebrate and welcome {new_member} who just joined our Kallang Lunch Crew! Get them excited to eat lunch with us! Keep it under 40 words."
+            full_prompt = f"Celebrate and welcome {new_member} who just joined our Kallang Lunch Crew! Welcome them with massive excitement and local food hype. Keep it to exactly one short sentence of 20 words or less."
         elif prompt_type == "offboard":
             leaving_member = user_query or "our friend"
-            full_prompt = f"{system_instruction} Say a playful, high-energy goodbye to {leaving_member} who has left our lunch coordination list for now. Wish them a good meal anyway! Keep it under 40 words."
+            full_prompt = f"Say a playful, high-energy Singaporean-style goodbye to {leaving_member} who is skipping the feast and leaving the lunch list. Keep it to exactly one short sentence of 20 words or less."
         else:
-            full_prompt = f"{system_instruction} The user asked you this: '{user_query}'. Reply in your hype persona!"
+            full_prompt = f"The user asked you this: '{user_query}'. Reply in your hype persona! Keep it under 40 words."
 
         response = client.models.generate_content(
             model=model_id,
-            contents=full_prompt
+            contents=full_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction
+            )
         )
         return response.text
     except Exception as e:

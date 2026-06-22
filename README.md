@@ -27,6 +27,12 @@ The bot has transitioned from brittle GitHub Actions to a production-grade serve
 - **📣 AI Leaderboard Cheer**: Personalized, celebratory standinds at 12:30 PM.
 - **🔔 Smart Reminders**: Automatically nudges non-voters.
 
+### ➕ Dynamic Onboarding & Offboarding (Auto-Enrollment)
+- **Auto Join/Leave**: When a new member joins the group, the bot automatically registers them to the checklist. When they leave, it unregisters them automatically.
+- **Self-Service Commands**: Members can use `/join` or `/leave` to join or leave the daily checklist themselves.
+- **Admin Commands**: Admins can use `/onboard @username` or `/offboard @username` to manage users.
+- **AI Character Celebrations**: Welcomes and departures are celebrated in real-time with ultra-fast, customized Gemini 3.1 AI Hype greetings!
+
 ## ⏰ Daily Routine (SGT)
 The bot follows a strict schedule via **Upstash QStash**:
 - **10:45 AM**: ⚡ AI Hype Message
@@ -51,6 +57,19 @@ Configure these in **Vercel**:
 - `GEMINI_API_KEY`: Google AI Studio workspace key.
 - `UPSTASH_REDIS_REST_URL` / `TOKEN`: Your database credentials.
 - `REGULARS`: Comma-separated usernames for the smart reminder system.
+
+### 3. Register Telegram Commands (Optional but Recommended)
+Send `/setcommands` to **@BotFather** and register the following list of autocomplete commands:
+```text
+weather - Get current weather briefing
+leaderboard - View monthly standings
+missing - Check who hasn't voted yet today
+hype - Get an instant burst of AI motivation
+join - Join the daily lunch list (self-service)
+leave - Leave the daily lunch list (self-service)
+onboard - Register a user on the regular list
+offboard - Unregister a user from the regular list
+```
 
 ---
 *Created with ❤️ for hungry teams in Singapore. Powered by Gemini 3.1 Intelligence.*
